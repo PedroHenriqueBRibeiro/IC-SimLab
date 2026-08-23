@@ -1,136 +1,206 @@
 export type Vertex = [number, number];
 export type Arc = [Vertex, Vertex];
 
-export const ROWS = 3;
-export const COLS = 3;
-
-export const VERTICES: Vertex[] = Array.from(
-  { length: ROWS * COLS },
-  (_, k) => [Math.floor(k / COLS), k % COLS]
-);
-
-export function key(v: Vertex): string {
-  return `${v[0]},${v[1]}`;
+export interface QuantumWalkConfig {
+  rows: number;
+  cols: number;
+  boundary?: "open" | "periodic";
+  defaultCoin?: "grover" | "hadamard" | "mixed";
 }
 
-export function neighbors(v: Vertex): Vertex[] {
-  const [i, j] = v;
-  const candidates: Vertex[] = [
-    [i - 1, j],
-    [i + 1, j],
-    [i, j - 1],
-    [i, j + 1],
-  ];
-  return candidates.filter(
-    ([x, y]) => x >= 0 && x < ROWS && y >= 0 && y < COLS
-  );
-}
+export class QuantumSystem {
+  rows: number;
+  cols: number;
+  boundary: "open" | "periodic";
+  defaultCoin: "grover" | "hadamard" | "mixed";
 
-export const DEGREE = new Map(
-  VERTICES.map((v) => [key(v), neighbors(v).length])
-);
+  vertices: Vertex[];
+  degree: Map<string, number>;
+  arcs: Arc[];
+  arcIndex: Map<string, number>;
+  C: number[][];
+  S: number[][];
+  U: number[][];
 
-export const ARCS: Arc[] = VERTICES.flatMap((v) =>
-  neighbors(v).map((w) => [v, w] as Arc)
-);
+  constructor(config: QuantumWalkConfig) {
+    this.rows = config.rows;
+    this.cols = config.cols;
+    this.boundary = config.boundary || "open";
+    this.defaultCoin = config.defaultCoin || "mixed";
 
-const arcIndex = new Map(
-  ARCS.map((arc, i) => [`${key(arc[0])}|${key(arc[1])}`, i])
-);
+    this.vertices = Array.from(
+      { length: this.rows * this.cols },
+      (_, k) => [Math.floor(k / this.cols), k % this.cols]
+    );
 
-function grover(d: number): number[][] {
-  const value = 2 / d;
-  const matrix = Array.from({ length: d }, () => Array(d).fill(value));
-  for (let i = 0; i < d; i++) matrix[i][i] -= 1;
-  return matrix;
-}
+    this.arcs = this.vertices.flatMap((v) =>
+      this.neighbors(v).map((w) => [v, w] as Arc)
+    );
 
-function hadamard(): number[][] {
-  const a = 1 / Math.sqrt(2);
-  return [
-    [a, a],
-    [a, -a],
-  ];
-}
+    this.degree = new Map(
+      this.vertices.map((v) => [this.key(v), this.neighbors(v).length])
+    );
 
-function buildCoin(): number[][] {
-  const n = ARCS.length;
-  const C = Array.from({ length: n }, () => Array(n).fill(0));
+    this.arcIndex = new Map(
+      this.arcs.map((arc, i) => [`${this.key(arc[0])}|${this.key(arc[1])}`, i])
+    );
 
-  for (const v of VERTICES) {
-    const ns = neighbors(v);
-    const ids = ns.map((w) => arcIndex.get(`${key(v)}|${key(w)}`)!);
-    const local = ns.length === 2 ? hadamard() : grover(ns.length);
+    this.C = this.buildCoin();
+    this.S = this.buildShift();
+    this.U = this.matMul(this.S, this.C);
+  }
 
-    ids.forEach((gi, i) =>
-      ids.forEach((gj, j) => {
-        C[gi][gj] = local[i][j];
-      })
+  key(v: Vertex): string {
+    return `${v[0]},${v[1]}`;
+  }
+
+  neighbors(v: Vertex): Vertex[] {
+    const [i, j] = v;
+    const candidates: Vertex[] = [
+      [i - 1, j],
+      [i + 1, j],
+      [i, j - 1],
+      [i, j + 1],
+    ];
+
+    if (this.boundary === "open") {
+      return candidates.filter(
+        ([x, y]) => x >= 0 && x < this.rows && y >= 0 && y < this.cols
+      );
+    } else {
+      // Periodic boundary conditions
+      return candidates.map(([x, y]) => [
+        (x + this.rows) % this.rows,
+        (y + this.cols) % this.cols,
+      ]);
+    }
+  }
+
+  grover(d: number): number[][] {
+    const value = 2 / d;
+    const matrix = Array.from({ length: d }, () => Array(d).fill(value));
+    for (let i = 0; i < d; i++) matrix[i][i] -= 1;
+    return matrix;
+  }
+
+  hadamard(d: number): number[][] {
+    if (d === 2) {
+      const a = 1 / Math.sqrt(2);
+      return [
+        [a, a],
+        [a, -a],
+      ];
+    }
+    // Fallback if hadamard is requested for d != 2
+    return this.grover(d);
+  }
+
+  buildCoin(): number[][] {
+    const n = this.arcs.length;
+    const C = Array.from({ length: n }, () => Array(n).fill(0));
+
+    for (const v of this.vertices) {
+      const ns = this.neighbors(v);
+      const ids = ns.map((w) => this.arcIndex.get(`${this.key(v)}|${this.key(w)}`)!);
+      
+      let local: number[][];
+      if (this.defaultCoin === "mixed") {
+        local = ns.length === 2 ? this.hadamard(2) : this.grover(ns.length);
+      } else if (this.defaultCoin === "hadamard") {
+        local = this.hadamard(ns.length);
+      } else {
+        local = this.grover(ns.length);
+      }
+
+      ids.forEach((gi, i) =>
+        ids.forEach((gj, j) => {
+          C[gi][gj] = local[i][j];
+        })
+      );
+    }
+
+    return C;
+  }
+
+  buildShift(): number[][] {
+    const n = this.arcs.length;
+    const S = Array.from({ length: n }, () => Array(n).fill(0));
+
+    this.arcs.forEach(([u, v], i) => {
+      const j = this.arcIndex.get(`${this.key(v)}|${this.key(u)}`)!;
+      S[j][i] = 1;
+    });
+
+    return S;
+  }
+
+  matMul(A: number[][], B: number[][]): number[][] {
+    return A.map((row) =>
+      B[0].map((_, j) =>
+        row.reduce((sum, value, k) => sum + value * B[k][j], 0)
+      )
     );
   }
 
-  return C;
-}
-
-function buildShift(): number[][] {
-  const n = ARCS.length;
-  const S = Array.from({ length: n }, () => Array(n).fill(0));
-
-  ARCS.forEach(([u, v], i) => {
-    const j = arcIndex.get(`${key(v)}|${key(u)}`)!;
-    S[j][i] = 1;
-  });
-
-  return S;
-}
-
-export const C = buildCoin();
-export const S = buildShift();
-
-export function matMul(A: number[][], B: number[][]): number[][] {
-  return A.map((row) =>
-    B[0].map((_, j) =>
-      row.reduce((sum, value, k) => sum + value * B[k][j], 0)
-    )
-  );
-}
-
-export const U = matMul(S, C);
-
-export function evolve(state: number[]): number[] {
-  return U.map((row) =>
-    row.reduce((sum, value, i) => sum + value * state[i], 0)
-  );
-}
-
-export function probabilities(state: number[]): number[][] {
-  const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-
-  ARCS.forEach(([v], i) => {
-    grid[v[0]][v[1]] += state[i] ** 2;
-  });
-
-  return grid;
-}
-
-export function norm(state: number[]): number {
-  return Math.sqrt(state.reduce((sum, x) => sum + x * x, 0));
-}
-
-export function createHistory(tMax: number, initialArc = 0): number[][] {
-  const initial = Array(ARCS.length).fill(0);
-  initial[initialArc] = 1;
-
-  const history = [initial];
-  for (let t = 0; t < tMax; t++) {
-    history.push(evolve(history[history.length - 1]));
+  evolve(state: number[]): number[] {
+    return this.U.map((row) =>
+      row.reduce((sum, value, i) => sum + value * state[i], 0)
+    );
   }
-  return history;
+
+  probabilities(state: number[]): number[][] {
+    const grid = Array.from({ length: this.rows }, () => Array(this.cols).fill(0));
+    this.arcs.forEach(([v], i) => {
+      grid[v[0]][v[1]] += state[i] ** 2;
+    });
+    return grid;
+  }
+
+  createHistory(tMax: number, initialArc: number): number[][] {
+    const initial = Array(this.arcs.length).fill(0);
+    if (initialArc >= 0 && initialArc < this.arcs.length) {
+      initial[initialArc] = 1;
+    } else {
+      initial[0] = 1; // Fallback
+    }
+
+    const history = [initial];
+    for (let t = 0; t < tMax; t++) {
+      history.push(this.evolve(history[history.length - 1]));
+    }
+    return history;
+  }
+
+  diracTerms(state: number[]): DiracTerm[] {
+    const terms: DiracTerm[] = [];
+    state.forEach((a, i) => {
+      if (Math.abs(a) > 0.0005) {
+        const [u, v] = this.arcs[i];
+        terms.push({
+          sign: a < 0 ? "−" : "+",
+          coeff: fmt(a),
+          from: u,
+          to: v,
+        });
+      }
+    });
+    return terms;
+  }
+
+  getInitialArcIndex(startRow: number, startCol: number, dirRow: number, dirCol: number): number {
+    const idx = this.arcIndex.get(`${startRow},${startCol}|${dirRow},${dirCol}`);
+    if (idx !== undefined) return idx;
+    
+    // fallback to first valid neighbor
+    const neighbors = this.neighbors([startRow, startCol]);
+    if (neighbors.length > 0) {
+      return this.arcIndex.get(`${startRow},${startCol}|${neighbors[0][0]},${neighbors[0][1]}`) || 0;
+    }
+    return 0;
+  }
 }
 
 function fmt(x: number): string {
-  // Sempre devolve a magnitude (sem sinal) -- o sinal é tratado à parte
-  // por quem chama, para nunca duplicar o "-" (bug anterior: "− -0.080").
   const abs = Math.abs(x);
   if (abs < 0.0005) return "";
   if (Math.abs(abs - 1) < 0.0005) return "1";
@@ -144,35 +214,6 @@ export type DiracTerm = {
   to: Vertex;
 };
 
-/** Versão estruturada (uma entrada por termo), usada pela UI em "chips". */
-export function diracTerms(state: number[]): DiracTerm[] {
-  const terms: DiracTerm[] = [];
-  state.forEach((a, i) => {
-    if (Math.abs(a) > 0.0005) {
-      const [u, v] = ARCS[i];
-      terms.push({
-        sign: a < 0 ? "−" : "+",
-        coeff: fmt(a),
-        from: u,
-        to: v,
-      });
-    }
-  });
-  return terms;
-}
-
-export function dirac(state: number[], t: number): string {
-  const terms = diracTerms(state);
-  if (!terms.length) return `|ψ_${t}⟩ = 0`;
-  const body = terms
-    .map((term, i) => {
-      const piece = `${term.coeff}|(${term.from[0]},${term.from[1]}),(${term.to[0]},${term.to[1]})⟩`;
-      return i === 0 && term.sign === "+" ? piece : `${term.sign} ${piece}`;
-    })
-    .join(" ");
-  return `|ψ_${t}⟩ = ${body}`;
-}
-
-export function transitionFormula(t: number): string {
-  return `|ψ_${t + 1}⟩ = U|ψ_${t}⟩`;
+export function norm(state: number[]): number {
+  return Math.sqrt(state.reduce((sum, x) => sum + x * x, 0));
 }

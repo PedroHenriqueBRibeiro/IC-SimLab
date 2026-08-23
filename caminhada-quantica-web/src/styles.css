@@ -1,6 +1,6 @@
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Design Tokens
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 :root {
   /* Surfaces */
   --bg:          #F8FAFC;
@@ -12,7 +12,7 @@
   --border:      #E2E8F0;
   --border-2:    #CBD5E1;
 
-  /* Brand — paleta mais clara e luminosa */
+  /* Brand â€” paleta mais clara e luminosa */
   --primary:     #4F46E5;
   --primary-dim: rgba(79, 70, 229, .15);
   --primary-glow:rgba(79, 70, 229, .35);
@@ -47,9 +47,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Reset
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 button, input, select { font: inherit; }
@@ -60,17 +60,17 @@ sub {
   vertical-align: sub;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Scrollbar
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-/* ════════════════════════════════════════════════════════
-   App Shell — Single Viewport
-   ════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   App Shell â€” Single Viewport
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 html, body, #root {
   height: 100%;
 }
@@ -86,15 +86,20 @@ body {
 .app {
   height: 100dvh;
   display: grid;
-  grid-template-rows: 48px 1fr 60px;
+  grid-template-rows: 48px 1fr;
   padding: 0 14px;
   overflow: hidden;
   gap: 0;
 }
 
-/* ════════════════════════════════════════════════════════
+/* When visualization tab active, reserve space for controls bar */
+.app.has-controls {
+  grid-template-rows: 48px 1fr 60px;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Header
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .header {
   display: flex;
   align-items: center;
@@ -108,6 +113,44 @@ body {
   display: flex;
   align-items: center;
   gap: 11px;
+}
+
+/* ── Header Tabs ─────────────────────────────── */
+.header-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 3px;
+  margin-left: 8px;
+}
+
+.tab-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t3);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all var(--fast);
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.tab-btn:hover:not(.active) {
+  color: var(--t2);
+  background: var(--surface-3);
+}
+
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
 }
 
 .header-logo {
@@ -190,9 +233,9 @@ h1 {
   letter-spacing: .04em;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Workspace
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .workspace {
   display: grid;
   grid-template-columns: 1fr 370px;
@@ -202,9 +245,9 @@ h1 {
   min-height: 0;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Visual Card (3D Canvas)
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .visual-card {
   display: flex;
   flex-direction: column;
@@ -273,9 +316,9 @@ h1 {
   opacity: .8;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Sidebar
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .side {
   display: flex;
   flex-direction: column;
@@ -324,9 +367,9 @@ h1 {
   flex-shrink: 0;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Dirac Panel
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .dirac-head {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
@@ -375,9 +418,9 @@ h1 {
 .term-coeff { color: var(--t1); font-weight: 700; }
 .term-ket   { color: var(--t2); }
 
-/* ════════════════════════════════════════════════════════
-   Stats (Verificação)
-   ════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Stats (VerificaÃ§Ã£o)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -416,9 +459,9 @@ h1 {
 
 .stat-value.accent { color: var(--cyan); }
 
-/* ════════════════════════════════════════════════════════
-   Formula (Evolução)
-   ════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Formula (EvoluÃ§Ã£o)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .formula {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
@@ -446,11 +489,12 @@ h1 {
   margin: 2px 0;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Probability Matrix
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .matrix {
   display: grid;
+  /* grid-template-columns set via inline style for dynamic sizes */
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
 }
@@ -505,9 +549,9 @@ h1 {
   letter-spacing: .02em;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Controls Bar
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .controls-bar {
   display: flex;
   align-items: center;
@@ -714,9 +758,9 @@ h1 {
   outline-offset: 2px;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    3D Scene Elements (rendered via @react-three/drei Html)
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Probability chip floating above bar */
 .bar-chip {
@@ -788,29 +832,29 @@ h1 {
   pointer-events: none;
 }
 
-/* ════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Responsive Breakpoints
-   ════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* 1600px — give sidebar a touch more room */
+/* 1600px â€” give sidebar a touch more room */
 @media (min-width: 1600px) {
   .workspace { grid-template-columns: 1fr 320px; }
 }
 
-/* 1366px — tight but still single viewport */
+/* 1366px â€” tight but still single viewport */
 @media (max-width: 1366px) {
   .workspace { grid-template-columns: 1fr 272px; }
   .kbd-hint { display: none; }
 }
 
-/* 1200px — reduce sidebar further */
+/* 1200px â€” reduce sidebar further */
 @media (max-width: 1200px) {
   .workspace { grid-template-columns: 1fr 250px; }
   .panel { padding: 9px 10px; }
   .stats { gap: 4px; }
 }
 
-/* ≤1024px — stack layout, allow scrolling */
+/* â‰¤1024px â€” stack layout, allow scrolling */
 @media (max-width: 1024px) {
   body { overflow-y: auto; overflow-x: hidden; }
 
@@ -844,9 +888,9 @@ h1 {
   .controls-bar { padding: 10px 0; }
 }
 
-/* ════════════════════════════════════════════════════════
-   Dirac Modal — popup with full quantum state notation
-   ════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Dirac Modal â€” popup with full quantum state notation
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Trigger button inside the sidebar panel */
 .dirac-expand-btn {
@@ -897,14 +941,14 @@ h1 {
 }
 
 /* ========================================================
-   🚀 SOLUÇÃO DEFINITIVA PARA O MODAL SOBREPOR TUDO
+   ðŸš€ SOLUÃ‡ÃƒO DEFINITIVA PARA O MODAL SOBREPOR TUDO
    ======================================================== */
 
 /* Overlay backdrop - fica acima de TUDO */
 .dirac-overlay {
   position: fixed;
   inset: 0;
-  z-index: 999999 !important; /* Z-index estratosférico */
+  z-index: 999999 !important; /* Z-index estratosfÃ©rico */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -923,7 +967,7 @@ h1 {
 /* Modal card - ainda mais alto que o overlay */
 .dirac-modal {
   position: relative;
-  z-index: 1000000 !important; /* Z-index máximo */
+  z-index: 1000000 !important; /* Z-index mÃ¡ximo */
   background: var(--surface);
   border: 1px solid var(--border-2);
   border-radius: 20px;
@@ -944,13 +988,13 @@ h1 {
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
-/* FORÇAR todos os elementos 3D a ficarem atrás do modal */
+/* FORÃ‡AR todos os elementos 3D a ficarem atrÃ¡s do modal */
 .canvas-wrap canvas {
   position: relative;
   z-index: 1 !important;
 }
 
-/* Esconder tooltips 3D quando o modal está aberto */
+/* Esconder tooltips 3D quando o modal estÃ¡ aberto */
 .dirac-overlay ~ .vertex-tooltip,
 .dirac-overlay ~ .bar-chip,
 .dirac-overlay ~ [class*="tooltip"] {
@@ -959,17 +1003,17 @@ h1 {
   pointer-events: none !important;
 }
 
-/* Garantir que elementos do Three.js não sobreponham */
+/* Garantir que elementos do Three.js nÃ£o sobreponham */
 canvas + div {
   z-index: auto !important;
 }
 
-/* Forçar todos os elementos filhos do Three.js a terem z-index baixo */
+/* ForÃ§ar todos os elementos filhos do Three.js a terem z-index baixo */
 .canvas-wrap * {
   z-index: 1 !important;
 }
 
-/* Quando o modal está aberto, desabilitar interação com o canvas */
+/* Quando o modal estÃ¡ aberto, desabilitar interaÃ§Ã£o com o canvas */
 .dirac-overlay-active .canvas-wrap {
   pointer-events: none;
 }
@@ -1068,3 +1112,383 @@ canvas + div {
 .modal-footer strong {
   color: var(--t2);
 }
+
+/* ════════════════════════════════════════════════════════
+   Laboratory Panel
+   ════════════════════════════════════════════════════════ */
+.lab-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 0 20px;
+  overflow-y: auto;
+  gap: 20px;
+  min-height: 0;
+}
+
+.lab-header {
+  text-align: center;
+}
+
+.lab-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--t1);
+  letter-spacing: -.02em;
+  margin-bottom: 4px;
+}
+
+.lab-header p {
+  font-size: 12px;
+  color: var(--t3);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.lab-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color var(--base), box-shadow var(--base);
+}
+
+.lab-card:hover {
+  border-color: var(--border-2);
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
+}
+
+.lab-card h3 {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--t2);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+}
+
+.lab-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lab-field label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t3);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.lab-field input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--primary) 0%, var(--border-2) 0%);
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: opacity var(--fast);
+}
+
+.lab-field input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--primary-dim);
+  cursor: pointer;
+}
+
+.lab-field input[type="number"] {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--t1);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  transition: border-color var(--fast), box-shadow var(--fast);
+}
+
+.lab-field input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-dim);
+}
+
+.lab-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  text-align: right;
+}
+
+.lab-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lab-field-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lab-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lab-toggle {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all var(--fast);
+  white-space: nowrap;
+}
+
+.lab-toggle:hover:not(.active) {
+  background: var(--surface-3);
+  border-color: var(--border-2);
+  color: var(--t1);
+}
+
+.lab-toggle.active {
+  background: var(--primary-dim);
+  border-color: rgba(79, 70, 229, .5);
+  color: var(--primary);
+}
+
+.lab-hint {
+  font-size: 10px;
+  color: var(--t3);
+  line-height: 1.5;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+}
+
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+
+.lab-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.lab-btn {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all var(--fast);
+  border: 1px solid transparent;
+  letter-spacing: .02em;
+}
+
+.lab-btn.secondary {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--t2);
+}
+
+.lab-btn.secondary:hover {
+  background: var(--surface-3);
+  border-color: var(--border-2);
+  color: var(--t1);
+}
+
+.lab-btn.primary {
+  background: var(--accent);
+  border-color: rgba(124, 58, 237, .5);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(124, 58, 237, .25);
+}
+
+.lab-btn.primary:hover {
+  background: #8B5CF6;
+  box-shadow: 0 0 28px rgba(124, 58, 237, .4);
+}
+
+.lab-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ── Lab card header with icon ── */
+.lab-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lab-card-icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: .7;
+}
+
+.lab-card-header h3 {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--t2);
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
+/* Override since we use lab-card-header now */
+.lab-card h3 {
+  display: none;
+}
+
+.lab-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lab-field-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t3);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* Range slider with fill */
+.lab-field input[type="range"] {
+  background: linear-gradient(
+    to right,
+    var(--primary) 0%,
+    var(--primary) calc(var(--pct, 0) * 1%),
+    var(--border-2) calc(var(--pct, 0) * 1%),
+    var(--border-2) 100%
+  );
+}
+
+/* ── Lab preview grid (geometry visualization) ── */
+.lab-preview-grid {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 120px;
+  margin: 4px auto;
+}
+
+/* dynamic via inline style — fallback: */
+.lab-preview-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.lab-preview-cell {
+  border-radius: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background var(--fast);
+  aspect-ratio: 1;
+}
+
+.lab-preview-cell.center {
+  background: var(--primary-dim);
+  border-color: rgba(79, 70, 229, .4);
+}
+
+/* ── Info box ── */
+.lab-info-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lab-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--t3);
+}
+
+.lab-info-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* ── Lab header icon ── */
+.lab-header-icon {
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 6px;
+  opacity: .6;
+}
+
+/* ── State preview ── */
+.lab-state-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.lab-state-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.lab-state-ket {
+  font-size: 11px;
+  color: var(--t1);
+  font-weight: 500;
+}
+

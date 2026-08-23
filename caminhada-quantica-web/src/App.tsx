@@ -4,25 +4,15 @@ import { Pause, Play, ChevronLeft, ChevronRight, RotateCcw, Maximize2 } from "lu
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import * as THREE from "three";
 import {
-  ARCS,
-  ROWS,
-  COLS,
-  DEGREE,
-  createHistory,
-  dirac,
-  diracTerms,
+  QuantumSystem,
   norm,
-  probabilities,
   type Vertex,
 } from "./quantum";
+import { LabPanel, type SimulationParams } from "./LabPanel";
 
 /* ─────────────────────────────────────────────
    Constants
    ───────────────────────────────────────────── */
-const T_MAX = 300;
-const INITIAL_ARC = ARCS.findIndex(
-  ([u, v]) => u[0] === 1 && u[1] === 1 && v[0] === 0 && v[1] === 1
-);
 const HEIGHT_SCALE = 2.0;
 const MIN_H = 0.04;
 
@@ -69,11 +59,17 @@ function Bar({
   col,
   p,
   maxP,
+  degree,
+  ox,
+  oz,
 }: {
   row: number;
   col: number;
   p: number;
   maxP: number;
+  degree: number;
+  ox: number;
+  oz: number;
 }) {
   const barRef       = useRef<THREE.Mesh>(null);
   const labelRef     = useRef<THREE.Group>(null);
@@ -114,9 +110,8 @@ function Bar({
   });
 
   const color  = viridis(maxP > 0 ? p / maxP : 0);
-  const x      = col - 1;
-  const z      = row - 1;
-  const degree = DEGREE.get(`${row},${col}`) ?? 2;
+  const x      = col - ox;
+  const z      = row - oz;
 
   return (
     <group position={[x, 0, z]}>
@@ -194,8 +189,15 @@ function Bar({
 /* ─────────────────────────────────────────────
    Scene — 3D world
    ───────────────────────────────────────────── */
-function Scene({ grid }: { grid: number[][] }) {
+function Scene({ grid, system }: { grid: number[][], system: QuantumSystem }) {
   const maxP = Math.max(...grid.flat(), 1e-6);
+  
+  const ox = (system.cols - 1) / 2;
+  const oz = (system.rows - 1) / 2;
+  
+  // Make the grid floor and helper large enough
+  const floorW = Math.max(7, system.cols * 1.5);
+  const floorH = Math.max(7, system.rows * 1.5);
 
   return (
     <>
@@ -208,10 +210,10 @@ function Scene({ grid }: { grid: number[][] }) {
         intensity={1.0}
         castShadow
         shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-4}
-        shadow-camera-right={4}
-        shadow-camera-top={4}
-        shadow-camera-bottom={-4}
+        shadow-camera-left={-floorW/2}
+        shadow-camera-right={floorW/2}
+        shadow-camera-top={floorH/2}
+        shadow-camera-bottom={-floorH/2}
       />
       <directionalLight position={[-4, 2.5, -3]} intensity={0.4} />
       <hemisphereLight args={["#ffffff", "#e2e8f0", 0.6]} />
@@ -221,27 +223,27 @@ function Scene({ grid }: { grid: number[][] }) {
       {/* Bars */}
       {grid.map((row, i) =>
         row.map((p, j) => (
-          <Bar key={`${i}-${j}`} row={i} col={j} p={p} maxP={maxP} />
+          <Bar key={`${i}-${j}`} row={i} col={j} p={p} maxP={maxP} degree={system.degree.get(`${i},${j}`) ?? 2} ox={ox} oz={oz} />
         ))
       )}
 
       {/* Ground plane */}
       <mesh position={[0, -0.014, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[7, 7]} />
+        <planeGeometry args={[floorW, floorH]} />
         <meshStandardMaterial color="#F8FAFC" roughness={1} />
       </mesh>
 
       {/* Grid lines */}
-      <gridHelper args={[3.3, 3, "#CBD5E1", "#E2E8F0"]} position={[0, -0.006, 0]} />
+      <gridHelper args={[floorW, Math.max(system.rows, system.cols), "#CBD5E1", "#E2E8F0"]} position={[0, -0.006, 0]} />
 
       {/* Axis labels */}
-      {[0, 1, 2].map((r) => (
-        <Html key={`row-${r}`} position={[-1.85, 0.01, r - 1]} center distanceFactor={9}>
+      {Array.from({ length: system.rows }).map((_, r) => (
+        <Html key={`row-${r}`} position={[-ox - 0.85, 0.01, r - oz]} center distanceFactor={9}>
           <span className="axis-tick">{r}</span>
         </Html>
       ))}
-      {[0, 1, 2].map((c) => (
-        <Html key={`col-${c}`} position={[c - 1, 0.01, -1.85]} center distanceFactor={9}>
+      {Array.from({ length: system.cols }).map((_, c) => (
+        <Html key={`col-${c}`} position={[c - ox, 0.01, -oz - 0.85]} center distanceFactor={9}>
           <span className="axis-tick">{c}</span>
         </Html>
       ))}
@@ -269,13 +271,13 @@ function ColorLegend() {
 }
 
 /* ─────────────────────────────────────────────
-   Probability Matrix 3×3
+   Probability Matrix
    ───────────────────────────────────────────── */
-function Matrix({ grid }: { grid: number[][] }) {
+function Matrix({ grid, cols }: { grid: number[][], cols: number }) {
   const maxP = Math.max(...grid.flat(), 1e-9);
 
   return (
-    <div className="matrix">
+    <div className="matrix" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
       {grid.map((row, i) =>
         row.map((value, j) => {
           const intensity = maxP > 0 ? value / maxP : 0;
@@ -305,13 +307,15 @@ function Matrix({ grid }: { grid: number[][] }) {
 function DiracPanel({
   state,
   step,
+  system,
   onExpand,
 }: {
   state: number[];
   step: number;
+  system: QuantumSystem;
   onExpand: () => void;
 }) {
-  const terms = diracTerms(state);
+  const terms = system.diracTerms(state);
 
   return (
     <>
@@ -357,15 +361,17 @@ function DiracModal({
   step,
   normVal,
   totalP,
+  system,
   onClose,
 }: {
   state: number[];
   step: number;
   normVal: number;
   totalP: number;
+  system: QuantumSystem;
   onClose: () => void;
 }) {
-  const terms = diracTerms(state);
+  const terms = system.diracTerms(state);
 
   // Close on Escape key
   useEffect(() => {
@@ -439,19 +445,33 @@ function DiracModal({
    App
    ───────────────────────────────────────────── */
 export default function App() {
-  const history = useMemo(() => createHistory(T_MAX, INITIAL_ARC), []);
+  const [activeTab, setActiveTab] = useState<"visual" | "lab">("visual");
+
+  const [params, setParams] = useState<SimulationParams>({
+    config: { rows: 3, cols: 3, boundary: "open", defaultCoin: "mixed" },
+    tMax: 300,
+    initialRow: 1,
+    initialCol: 1,
+    initialDirRow: 0,
+    initialDirCol: 1,
+  });
+
+  const system = useMemo(() => new QuantumSystem(params.config), [params.config]);
+  const initialArc = useMemo(() => system.getInitialArcIndex(params.initialRow, params.initialCol, params.initialDirRow, params.initialDirCol), [system, params]);
+  const history = useMemo(() => system.createHistory(params.tMax, initialArc), [system, params.tMax, initialArc]);
+
   const [step,       setStep]       = useState(0);
   const [playing,    setPlaying]    = useState(false);
   const [speed,      setSpeed]      = useState(700);
   const [showDirac,  setShowDirac]  = useState(false);
 
   const state = history[step];
-  const grid  = probabilities(state);
+  const grid  = system.probabilities(state);
 
   /* Auto-play */
   useEffect(() => {
     if (!playing) return;
-    if (step >= T_MAX) { setPlaying(false); return; }
+    if (step >= params.tMax) { setPlaying(false); return; }
     const id = window.setTimeout(() => setStep((s) => s + 1), speed);
     return () => window.clearTimeout(id);
   }, [playing, step, speed]);
@@ -471,7 +491,7 @@ export default function App() {
         case "ArrowRight":
           e.preventDefault();
           setPlaying(false);
-          setStep((s) => Math.min(T_MAX, s + 1));
+          setStep((s) => Math.min(params.tMax, s + 1));
           break;
         case " ":
           e.preventDefault();
@@ -485,7 +505,7 @@ export default function App() {
         case "End":
           e.preventDefault();
           setPlaying(false);
-          setStep(T_MAX);
+          setStep(params.tMax);
           break;
       }
     }
@@ -497,20 +517,34 @@ export default function App() {
   const total     = grid.flat().reduce((a, b) => a + b, 0);
   const maxValue  = Math.max(...grid.flat());
   const maxIndex  = grid.flat().indexOf(maxValue);
-  const maxVertex: Vertex = [Math.floor(maxIndex / COLS), maxIndex % COLS];
-  const sliderPct = (step / T_MAX) * 100;
+  const maxVertex: Vertex = [Math.floor(maxIndex / system.cols), maxIndex % system.cols];
+  const sliderPct = (step / params.tMax) * 100;
   const normVal   = norm(state);
 
   return (
-    <div className="app">
+    <div className={`app${activeTab === "visual" ? " has-controls" : ""}`}>
 
       {/* ── Header ──────────────────────────────────── */}
       <header className="header">
         <div className="header-left">
           <div className="header-logo" aria-hidden="true">ψ</div>
           <div className="header-meta">
-            <div className="eyebrow">Simulação Quântica</div>
-            <h1>Caminhada Quântica</h1>
+            <div className="eyebrow">Quantum Walk Laboratory</div>
+            <h1>Simulação Quântica</h1>
+          </div>
+          <div className="header-tabs">
+            <button
+              className={`tab-btn ${activeTab === "visual" ? "active" : ""}`}
+              onClick={() => setActiveTab("visual")}
+            >
+              Visualização
+            </button>
+            <button
+              className={`tab-btn ${activeTab === "lab" ? "active" : ""}`}
+              onClick={() => setActiveTab("lab")}
+            >
+              Laboratório
+            </button>
           </div>
         </div>
         <div className="header-right">
@@ -523,176 +557,201 @@ export default function App() {
             <kbd className="kbd">Home</kbd>
             <kbd className="kbd">End</kbd>
           </div>
-          <div className="step-badge" aria-live="polite">t = {step} / {T_MAX}</div>
+          <div className="step-badge" aria-live="polite">t = {step} / {params.tMax}</div>
         </div>
       </header>
 
-      {/* ── Workspace ───────────────────────────────── */}
-      <section className="workspace">
+      {activeTab === "lab" ? (
+        <LabPanel
+          params={params}
+          onChange={(newParams) => {
+            setParams(newParams);
+            setStep(0);
+            setPlaying(false);
+          }}
+          onApply={() => setActiveTab("visual")}
+        />
+      ) : (
+        <>
+          {/* ── Workspace ───────────────────────────────── */}
+          <section className="workspace">
 
-        {/* Left: 3D Visualization */}
-        <div className="visual-card">
-          <div className="card-title">
-            <span>Evolução da Distribuição</span>
-            <div className="card-title-right">
-              <ColorLegend />
-              <span className="hint">Arraste · Scroll para zoom · Hover nos vértices</span>
-            </div>
-          </div>
-          <div className="canvas-wrap">
-            <Canvas shadows>
-              <Scene grid={grid} />
-            </Canvas>
-          </div>
-        </div>
-
-        {/* Right: Information Panels */}
-        <aside className="side">
-
-          {/* Dirac State */}
-          <section className="panel panel-dirac">
-            <div className="panel-label">Estado de Dirac</div>
-            <DiracPanel
-              state={state}
-              step={step}
-              onExpand={() => setShowDirac(true)}
-            />
-          </section>
-
-          {/* Side-by-side Panels */}
-          <div className="panel-row">
-            {/* Verification Stats */}
-            <section className="panel">
-              <div className="panel-label">Verificação</div>
-              <div className="stats">
-                <div className="stat-card">
-                  <div className="stat-label">‖ψ‖</div>
-                  <div className="stat-value">{normVal.toFixed(6)}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Σ P(v)</div>
-                  <div className="stat-value">{total.toFixed(6)}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">P máx</div>
-                  <div className="stat-value accent">{maxValue.toFixed(4)}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Vértice</div>
-                  <div className="stat-value">
-                    ({maxVertex[0]},{maxVertex[1]})
-                  </div>
+            {/* Left: 3D Visualization */}
+            <div className="visual-card">
+              <div className="card-title">
+                <span>Evolução da Distribuição</span>
+                <div className="card-title-right">
+                  <ColorLegend />
+                  <span className="hint">Arraste · Scroll para zoom · Hover nos vértices</span>
                 </div>
               </div>
-            </section>
+              <div className="canvas-wrap">
+                <Canvas shadows>
+                  <Scene grid={grid} system={system} />
+                </Canvas>
+              </div>
+            </div>
 
-            {/* Evolution Formula */}
+            {/* Right: Information Panels */}
+            <aside className="side">
 
-          </div>
+              {/* Dirac State */}
+              <section className="panel panel-dirac">
+                <div className="panel-label">Estado de Dirac</div>
+                <DiracPanel
+                  state={state}
+                  step={step}
+                  system={system}
+                  onExpand={() => setShowDirac(true)}
+                />
+              </section>
 
-          {/* Probability Matrix */}
-          <section className="panel">
-            <div className="panel-label">Distribuição P(v)</div>
-            <Matrix grid={grid} />
+              {/* Side-by-side Panels */}
+              <div className="panel-row">
+                {/* Verification Stats */}
+                <section className="panel">
+                  <div className="panel-label">Verificação</div>
+                  <div className="stats">
+                    <div className="stat-card">
+                      <div className="stat-label">‖ψ‖</div>
+                      <div className="stat-value">{normVal.toFixed(6)}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Σ P(v)</div>
+                      <div className="stat-value">{total.toFixed(6)}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">P máx</div>
+                      <div className="stat-value accent">{maxValue.toFixed(4)}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Vértice</div>
+                      <div className="stat-value">
+                        ({maxVertex[0]},{maxVertex[1]})
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Evolution Formula */}
+                <section className="panel">
+                  <div className="panel-label">Evolução</div>
+                  <div className="formula">
+                    <span className="formula-row">
+                      |ψ<sub>{step + 1}</sub>⟩ = U|ψ<sub>{step}</sub>⟩
+                    </span>
+                    <span className="formula-row">U = S · C</span>
+                  </div>
+                </section>
+              </div>
+
+              {/* Probability Matrix */}
+              <section className="panel">
+                <div className="panel-label">Distribuição P(v)</div>
+                <Matrix grid={grid} cols={system.cols} />
+              </section>
+
+            </aside>
           </section>
 
-        </aside>
-      </section>
+          {/* ── Controls Bar ────────────────────────────── */}
+          <div className="controls-bar" role="toolbar" aria-label="Controles de reprodução">
 
-      {/* ── Controls Bar ────────────────────────────── */}
-      <div className="controls-bar" role="toolbar" aria-label="Controles de reprodução">
+            {/* Playback buttons */}
+            <div className="playback">
+              <button
+                id="btn-reset"
+                className="ctrl-btn"
+                onClick={() => { setStep(0); setPlaying(false); }}
+                disabled={step === 0}
+                title="Reiniciar — Home"
+                aria-label="Reiniciar"
+              >
+                <RotateCcw size={13} />
+              </button>
 
-        {/* Playback buttons */}
-        <div className="playback">
-          <button
-            id="btn-reset"
-            className="ctrl-btn"
-            onClick={() => { setStep(0); setPlaying(false); }}
-            disabled={step === 0}
-            title="Reiniciar — Home"
-            aria-label="Reiniciar"
-          >
-            <RotateCcw size={13} />
-          </button>
+              <button
+                id="btn-prev"
+                className="ctrl-btn"
+                onClick={() => { setPlaying(false); setStep((s) => Math.max(0, s - 1)); }}
+                disabled={step === 0}
+                title="Passo anterior — ←"
+                aria-label="Passo anterior"
+              >
+                <ChevronLeft size={15} />
+              </button>
 
-          <button
-            id="btn-prev"
-            className="ctrl-btn"
-            onClick={() => { setPlaying(false); setStep((s) => Math.max(0, s - 1)); }}
-            disabled={step === 0}
-            title="Passo anterior — ←"
-            aria-label="Passo anterior"
-          >
-            <ChevronLeft size={15} />
-          </button>
+              <button
+                id="btn-play"
+                className="ctrl-btn play-btn"
+                onClick={() => setPlaying((p) => !p)}
+                disabled={step >= params.tMax && !playing}
+                title={playing ? "Pausar — Space" : "Reproduzir — Space"}
+                aria-label={playing ? "Pausar" : "Reproduzir"}
+              >
+                {playing ? <Pause size={15} /> : <Play size={15} />}
+              </button>
 
-          <button
-            id="btn-play"
-            className="ctrl-btn play-btn"
-            onClick={() => setPlaying((p) => !p)}
-            disabled={step >= T_MAX && !playing}
-            title={playing ? "Pausar — Space" : "Reproduzir — Space"}
-            aria-label={playing ? "Pausar" : "Reproduzir"}
-          >
-            {playing ? <Pause size={15} /> : <Play size={15} />}
-          </button>
+              <button
+                id="btn-next"
+                className="ctrl-btn"
+                onClick={() => { setPlaying(false); setStep((s) => Math.min(params.tMax, s + 1)); }}
+                disabled={step >= params.tMax}
+                title="Próximo passo — →"
+                aria-label="Próximo passo"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
 
-          <button
-            id="btn-next"
-            className="ctrl-btn"
-            onClick={() => { setPlaying(false); setStep((s) => Math.min(T_MAX, s + 1)); }}
-            disabled={step >= T_MAX}
-            title="Próximo passo — →"
-            aria-label="Próximo passo"
-          >
-            <ChevronRight size={15} />
-          </button>
-        </div>
+            <div className="ctrl-divider" aria-hidden="true" />
 
-        <div className="ctrl-divider" aria-hidden="true" />
+            {/* Timeline Slider */}
+            <div className="timeline-area">
+              <span className="timeline-counter" aria-live="polite">
+                t = {step} / {params.tMax}
+              </span>
+              <input
+                id="timeline-slider"
+                type="range"
+                className="timeline-slider"
+                min={0}
+                max={params.tMax}
+                value={step}
+                style={{ "--pct": sliderPct } as React.CSSProperties}
+                onChange={(e) => {
+                  setPlaying(false);
+                  setStep(Number(e.target.value));
+                }}
+                aria-label={`Passo temporal: ${step} de ${params.tMax}`}
+                aria-valuemin={0}
+                aria-valuemax={params.tMax}
+                aria-valuenow={step}
+              />
+            </div>
 
-        {/* Timeline Slider */}
-        <div className="timeline-area">
-          <span className="timeline-counter" aria-live="polite">
-            t = {step} / {T_MAX}
-          </span>
-          <input
-            id="timeline-slider"
-            type="range"
-            className="timeline-slider"
-            min={0}
-            max={T_MAX}
-            value={step}
-            style={{ "--pct": sliderPct } as React.CSSProperties}
-            onChange={(e) => {
-              setPlaying(false);
-              setStep(Number(e.target.value));
-            }}
-            aria-label={`Passo temporal: ${step} de ${T_MAX}`}
-            aria-valuemin={0}
-            aria-valuemax={T_MAX}
-            aria-valuenow={step}
-          />
-        </div>
+            <div className="ctrl-divider" aria-hidden="true" />
 
-        <div className="ctrl-divider" aria-hidden="true" />
+            {/* Speed chips */}
+            <div className="speed-group" role="group" aria-label="Velocidade de reprodução">
+              <span className="speed-label">vel.</span>
+              {SPEEDS.map((s) => (
+                <button
+                  key={s.label}
+                  className={`speed-chip${speed === s.ms ? " active" : ""}`}
+                  onClick={() => setSpeed(s.ms)}
+                  aria-pressed={speed === s.ms}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
 
-        {/* Speed chips */}
-        <div className="speed-group" role="group" aria-label="Velocidade de reprodução">
-          <span className="speed-label">vel.</span>
-          {SPEEDS.map((s) => (
-            <button
-              key={s.label}
-              className={`speed-chip${speed === s.ms ? " active" : ""}`}
-              onClick={() => setSpeed(s.ms)}
-              aria-pressed={speed === s.ms}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+          </div>
+        </>
+      )}
 
-      </div>
+
 
       {/* Dirac Modal */}
       {showDirac && (
@@ -701,6 +760,7 @@ export default function App() {
           step={step}
           normVal={normVal}
           totalP={total}
+          system={system}
           onClose={() => setShowDirac(false)}
         />
       )}
@@ -708,6 +768,4 @@ export default function App() {
   );
 }
 
-// mantém a exportação de "dirac" (string única) disponível para quem
-// preferir a formatação em texto corrido em vez dos chips.
-export { dirac };
+// dirac function was removed as we use diracTerms in the UI
