@@ -271,35 +271,73 @@ function ColorLegend() {
 }
 
 /* ─────────────────────────────────────────────
-   Probability Matrix
+   Probability Matrix — adaptive for any grid size
+   Small grids (≤6×6): labeled cells
+   Large grids: compact heatmap with tooltips only
    ───────────────────────────────────────────── */
-function Matrix({ grid, cols }: { grid: number[][], cols: number }) {
+function Matrix({ grid, cols, rows }: { grid: number[][], cols: number, rows: number }) {
   const maxP = Math.max(...grid.flat(), 1e-9);
+  const isCompact = cols > 4 || rows > 4;
+  const [hoveredCell, setHoveredCell] = useState<[number,number] | null>(null);
 
   return (
-    <div className="matrix" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-      {grid.map((row, i) =>
-        row.map((value, j) => {
-          const intensity = maxP > 0 ? value / maxP : 0;
-          const isMax = value > 1e-9 && Math.abs(value - maxP) < 1e-9;
-          return (
-            <div
-              key={`${i}-${j}`}
-              className={`cell${isMax ? " cell-max" : ""}`}
-              style={{
-                background: `rgba(79, 70, 229, ${(intensity * 0.15).toFixed(3)})`,
-              }}
-              title={`Vértice (${i},${j}) — P = ${value.toFixed(6)}`}
-            >
-              <span>{value.toFixed(3)}</span>
-              <small>({i},{j})</small>
-            </div>
-          );
-        })
+    <div className="matrix-wrap">
+      {/* Grid */}
+      <div
+        className={`matrix${isCompact ? " matrix-compact" : ""}`}
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+      >
+        {grid.map((row, i) =>
+          row.map((value, j) => {
+            const intensity = maxP > 0 ? value / maxP : 0;
+            const isMax = value > 1e-9 && Math.abs(value - maxP) < 1e-9;
+            return (
+              <div
+                key={`${i}-${j}`}
+                className={`cell${isMax ? " cell-max" : ""}${isCompact ? " cell-heatmap" : ""}`}
+                style={{
+                  background: isCompact
+                    ? `rgba(79, 70, 229, ${Math.max(intensity * 0.85, intensity > 0.001 ? 0.06 : 0).toFixed(3)})`
+                    : `rgba(79, 70, 229, ${(intensity * 0.15).toFixed(3)})`,
+                }}
+                title={`(${i},${j}) — P = ${value.toFixed(6)}`}
+                onMouseEnter={() => isCompact && setHoveredCell([i, j])}
+                onMouseLeave={() => isCompact && setHoveredCell(null)}
+              >
+                {!isCompact && (
+                  <>
+                    <span>{value.toFixed(3)}</span>
+                    <small>({i},{j})</small>
+                  </>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Floating tooltip for compact mode */}
+      {isCompact && hoveredCell && (
+        <div className="matrix-tooltip">
+          <span className="mt-coord">({hoveredCell[0]},{hoveredCell[1]})</span>
+          <span className="mt-val">
+            P = {grid[hoveredCell[0]]?.[hoveredCell[1]]?.toFixed(5) ?? "—"}
+          </span>
+        </div>
+      )}
+
+      {/* Legend for compact heatmap */}
+      {isCompact && (
+        <div className="matrix-legend">
+          <span>0</span>
+          <div className="matrix-legend-bar" />
+          <span>máx ({maxP.toFixed(3)})</span>
+        </div>
       )}
     </div>
   );
 }
+
 
 /* ───────────────────────────────────────────
    Dirac Notation — compact sidebar preview
@@ -595,7 +633,7 @@ export default function App() {
             {/* Right: Information Panels */}
             <aside className="side">
 
-              {/* Dirac State */}
+              {/* Dirac State — compact fixed height */}
               <section className="panel panel-dirac">
                 <div className="panel-label">Estado de Dirac</div>
                 <DiracPanel
@@ -606,19 +644,19 @@ export default function App() {
                 />
               </section>
 
-              {/* Side-by-side Panels */}
-              <div className="panel-row">
-                {/* Verification Stats */}
-                <section className="panel">
-                  <div className="panel-label">Verificação</div>
+              {/* Metrics row — Verificação + Evolução merged into one panel */}
+              <section className="panel panel-metrics">
+                <div className="panel-label">Métricas &amp; Evolução</div>
+                <div className="metrics-body">
+                  {/* Stats */}
                   <div className="stats">
                     <div className="stat-card">
                       <div className="stat-label">‖ψ‖</div>
-                      <div className="stat-value">{normVal.toFixed(6)}</div>
+                      <div className="stat-value">{normVal.toFixed(4)}</div>
                     </div>
                     <div className="stat-card">
                       <div className="stat-label">Σ P(v)</div>
-                      <div className="stat-value">{total.toFixed(6)}</div>
+                      <div className="stat-value">{total.toFixed(4)}</div>
                     </div>
                     <div className="stat-card">
                       <div className="stat-label">P máx</div>
@@ -626,29 +664,24 @@ export default function App() {
                     </div>
                     <div className="stat-card">
                       <div className="stat-label">Vértice</div>
-                      <div className="stat-value">
-                        ({maxVertex[0]},{maxVertex[1]})
-                      </div>
+                      <div className="stat-value">({maxVertex[0]},{maxVertex[1]})</div>
                     </div>
                   </div>
-                </section>
-
-                {/* Evolution Formula */}
-                <section className="panel">
-                  <div className="panel-label">Evolução</div>
-                  <div className="formula">
-                    <span className="formula-row">
+                  {/* Evolution formula inline */}
+                  <div className="evo-inline">
+                    <span className="evo-formula">
                       |ψ<sub>{step + 1}</sub>⟩ = U|ψ<sub>{step}</sub>⟩
                     </span>
-                    <span className="formula-row">U = S · C</span>
+                    <span className="evo-sep">·</span>
+                    <span className="evo-formula">U = S · C</span>
                   </div>
-                </section>
-              </div>
+                </div>
+              </section>
 
-              {/* Probability Matrix */}
-              <section className="panel">
+              {/* Probability Matrix — takes all remaining space */}
+              <section className="panel panel-matrix">
                 <div className="panel-label">Distribuição P(v)</div>
-                <Matrix grid={grid} cols={system.cols} />
+                <Matrix grid={grid} cols={system.cols} rows={system.rows} />
               </section>
 
             </aside>

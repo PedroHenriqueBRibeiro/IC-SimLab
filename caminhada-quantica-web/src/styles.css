@@ -349,10 +349,26 @@ h1 {
   min-width: 0;
 }
 
-/* DIRAC panel expands to fill remaining space */
+/* DIRAC panel: compact fixed height */
 .panel-dirac {
-  flex: 1;
+  flex-shrink: 0;
   min-height: 80px;
+  max-height: 160px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Metrics panel: compact, no grow */
+.panel-metrics {
+  flex-shrink: 0;
+}
+
+/* Matrix panel: takes ALL remaining space — must override flex-shrink:0 from .panel */
+.panel-matrix {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -367,9 +383,9 @@ h1 {
   flex-shrink: 0;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════════ 
    Dirac Panel
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ════════════════════════════════════════════════════════ */
 .dirac-head {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
@@ -492,11 +508,70 @@ h1 {
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Probability Matrix
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* Wrapper holds matrix + legend + tooltip */
+.matrix-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
 .matrix {
   display: grid;
-  /* grid-template-columns set via inline style for dynamic sizes */
+  /* grid-template-columns set via inline style */
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+/* Compact heatmap mode for grids > 4 in any dimension */
+.matrix.matrix-compact {
+  gap: 2px;
+}
+
+/* ── Metrics panel body ── */
+.metrics-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* Evolution formula inline below stats */
+.evo-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px 10px;
+  flex-wrap: wrap;
+}
+
+.evo-formula {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--t1);
+  white-space: nowrap;
+}
+
+.evo-formula sub {
+  color: rgba(79, 70, 229, .85);
+  font-size: 8px;
+}
+
+.evo-sep {
+  color: var(--border-2);
+  font-size: 14px;
+  line-height: 1;
 }
 
 .cell {
@@ -548,6 +623,78 @@ h1 {
   font-family: 'JetBrains Mono', monospace;
   letter-spacing: .02em;
 }
+
+/* ── Compact heatmap cell ── */
+.cell.cell-heatmap {
+  min-height: 0;
+  border-radius: 3px;
+  padding: 0;
+  aspect-ratio: 1;
+  cursor: crosshair;
+  border: 1px solid transparent;
+  transition: transform var(--fast), border-color var(--fast);
+}
+
+.cell.cell-heatmap:hover {
+  transform: scale(1.15);
+  z-index: 2;
+  border-color: rgba(79, 70, 229, .5);
+  box-shadow: 0 0 8px rgba(79, 70, 229, .3);
+}
+
+.cell.cell-max.cell-heatmap {
+  box-shadow: 0 0 0 1.5px rgba(8, 145, 178, .8) inset;
+}
+
+/* ── Matrix floating tooltip ── */
+.matrix-tooltip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  padding: 4px 10px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+
+.mt-coord {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.mt-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--t2);
+}
+
+/* ── Matrix legend (compact mode) ── */
+.matrix-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.matrix-legend-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, rgba(79, 70, 229, 0.06), rgba(79, 70, 229, 0.85));
+  opacity: .8;
+}
+
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Controls Bar
