@@ -1639,3 +1639,136 @@ canvas + div {
   font-weight: 500;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Loading Overlay — shown while Web Worker computes history
+   ══════════════════════════════════════════════════════════════ */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: overlay-in 180ms ease both;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 32px 40px;
+  box-shadow:
+    0 8px 40px rgba(0,0,0,.10),
+    0 0 0 1px var(--border) inset;
+  min-width: 320px;
+  animation: card-in 220ms cubic-bezier(.22,1,.36,1) both;
+}
+
+@keyframes card-in {
+  from { transform: translateY(10px) scale(.97); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.loading-icon {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-dim);
+  border: 1px solid rgba(79, 70, 229, .3);
+  border-radius: 12px;
+  padding: 8px 16px;
+  letter-spacing: -.02em;
+  box-shadow: 0 0 20px rgba(79, 70, 229, .12);
+  animation: pulse-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(79, 70, 229, .12); }
+  50%       { box-shadow: 0 0 28px rgba(79, 70, 229, .28); }
+}
+
+.loading-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--t1);
+  letter-spacing: -.02em;
+}
+
+.loading-sub {
+  font-size: 11.5px;
+  color: var(--t2);
+  font-weight: 500;
+}
+
+.loading-bar-track {
+  width: 100%;
+  height: 5px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.loading-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 10px;
+  transition: width 300ms ease;
+  box-shadow: 0 0 8px rgba(79, 70, 229, .4);
+}
+
+.loading-detail {
+  font-size: 10px;
+  color: var(--t3);
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Dirac preview overflow fade (used inside .panel-dirac) ── */
+.dirac-preview {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 7px 8px;
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+}
+
+/* ── Dirac expand button ── */
+.dirac-expand-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 4px 0 0 0;
+  font-size: 10px;
+  color: var(--t3);
+  cursor: pointer;
+  transition: color var(--fast);
+}
+
+.dirac-expand-btn:hover { color: var(--primary); }
+
+

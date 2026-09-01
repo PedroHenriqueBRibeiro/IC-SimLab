@@ -1,8 +1,8 @@
 import { useState } from "react";
-import type { QuantumWalkConfig } from "./quantum";
+import type { QuantumWalkConfig, EvolutionOrder } from "./quantum";
 
 export type SimulationParams = {
-  config: QuantumWalkConfig;
+  config: QuantumWalkConfig & { evolutionOrder?: EvolutionOrder };
   tMax: number;
   initialRow: number;
   initialCol: number;
@@ -11,7 +11,7 @@ export type SimulationParams = {
 };
 
 const DEFAULT_PARAMS: SimulationParams = {
-  config: { rows: 3, cols: 3, boundary: "open", defaultCoin: "mixed" },
+  config: { rows: 3, cols: 3, boundary: "open", defaultCoin: "mixed", evolutionOrder: "SC" },
   tMax: 300,
   initialRow: 1,
   initialCol: 1,
@@ -137,13 +137,13 @@ export function LabPanel({
 
           <Slider
             label="Linhas (M)"
-            min={3} max={15}
+            min={3} max={50}
             value={draft.config.rows}
             onChange={(v) => updateConfig({ rows: v })}
           />
           <Slider
             label="Colunas (N)"
-            min={3} max={15}
+            min={3} max={50}
             value={draft.config.cols}
             onChange={(v) => updateConfig({ cols: v })}
           />
@@ -199,15 +199,25 @@ export function LabPanel({
             onChange={(v) => updateConfig({ defaultCoin: v as "grover" | "hadamard" | "mixed" })}
           />
 
+          <ToggleGroup
+            label="Fórmula de Evolução"
+            value={draft.config.evolutionOrder ?? "SC"}
+            options={[
+              { value: "SC", label: "U = S·C", title: "Padrão DTQW: moeda primeiro, deslocamento depois" },
+              { value: "CS", label: "U = C·S", title: "Ordem reversa: deslocamento primeiro, moeda depois" },
+            ]}
+            onChange={(v) => updateConfig({ evolutionOrder: v as EvolutionOrder })}
+          />
+
           <div className="lab-info-box">
             <div className="lab-info-row">
               <span>Arcos totais</span>
               <span className="lab-info-val">
-                {/* Estimate: interior nodes have 4 neighbors */}
+                {/* Estimate: open grid directed edges = 4RC - 2R - 2C */}
                 {draft.config.boundary === "periodic"
                   ? draft.config.rows * draft.config.cols * 4
-                  : 2 * (draft.config.rows * draft.config.cols * 4
-                    - 2 * (draft.config.rows + draft.config.cols))}
+                  : 4 * (draft.config.rows * draft.config.cols)
+                    - 2 * (draft.config.rows + draft.config.cols)}
               </span>
             </div>
             <div className="lab-info-row">
@@ -215,8 +225,8 @@ export function LabPanel({
               <span className="lab-info-val">
                 ~{draft.config.boundary === "periodic"
                   ? draft.config.rows * draft.config.cols * 4
-                  : 2 * (draft.config.rows * draft.config.cols * 4
-                    - 2 * (draft.config.rows + draft.config.cols))}
+                  : 4 * (draft.config.rows * draft.config.cols)
+                    - 2 * (draft.config.rows + draft.config.cols)}
               </span>
             </div>
           </div>

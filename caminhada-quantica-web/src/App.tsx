@@ -9,6 +9,7 @@ import {
   type Vertex,
 } from "./quantum";
 import { LabPanel, type SimulationParams } from "./LabPanel";
+import type { WorkerMessage, WorkerInput } from "./quantum.worker";
 
 /* ─────────────────────────────────────────────
    Constants
@@ -348,7 +349,7 @@ function DiracPanel({
   system,
   onExpand,
 }: {
-  state: number[];
+  state: Float64Array;
   step: number;
   system: QuantumSystem;
   onExpand: () => void;
@@ -402,7 +403,7 @@ function DiracModal({
   system,
   onClose,
 }: {
-  state: number[];
+  state: Float64Array;
   step: number;
   normVal: number;
   totalP: number;
@@ -480,13 +481,34 @@ function DiracModal({
 }
 
 /* ─────────────────────────────────────────────
+   Loading overlay — shown while Worker computes
+   ───────────────────────────────────────────── */
+function LoadingOverlay({ pct }: { pct: number }) {
+  return (
+    <div className="loading-overlay" role="status" aria-live="polite">
+      <div className="loading-card">
+        <div className="loading-icon">⟨ψ|</div>
+        <div className="loading-title">Calculando simulação…</div>
+        <div className="loading-sub">Motor esparso · {pct}% concluído</div>
+        <div className="loading-bar-track">
+          <div className="loading-bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="loading-detail">
+          Cada passo usa O(|arcos|) operações, não O(|arcos|²)
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    App
    ───────────────────────────────────────────── */
 export default function App() {
   const [activeTab, setActiveTab] = useState<"visual" | "lab">("visual");
 
   const [params, setParams] = useState<SimulationParams>({
-    config: { rows: 3, cols: 3, boundary: "open", defaultCoin: "mixed" },
+    config: { rows: 3, cols: 3, boundary: "open", defaultCoin: "mixed", evolutionOrder: "SC" },
     tMax: 300,
     initialRow: 1,
     initialCol: 1,
@@ -494,17 +516,83 @@ export default function App() {
     initialDirCol: 1,
   });
 
+  // ── History state managed via Web Worker ──────────────────────────────────
+  const [historyBuffer, setHistoryBuffer] = useState<Float64Array | null>(null);
+  const [arcCount, setArcCount]           = useState(0);
+  const [workerProgress, setWorkerProgress] = useState<number | null>(null); // null = idle
+  const workerRef = useRef<Worker | null>(null);
+
   const system = useMemo(() => new QuantumSystem(params.config), [params.config]);
-  const initialArc = useMemo(() => system.getInitialArcIndex(params.initialRow, params.initialCol, params.initialDirRow, params.initialDirCol), [system, params]);
-  const history = useMemo(() => system.createHistory(params.tMax, initialArc), [system, params.tMax, initialArc]);
+  const initialArc = useMemo(
+    () => system.getInitialArcIndex(params.initialRow, params.initialCol, params.initialDirRow, params.initialDirCol),
+    [system, params]
+  );
+
+  // Launch Worker whenever params change
+  useEffect(() => {
+    // Terminate any existing Worker
+    if (workerRef.current) {
+      workerRef.current.terminate();
+    }
+
+    setHistoryBuffer(null);
+    setWorkerProgress(0);
+
+    const worker = new Worker(
+      new URL("./quantum.worker.ts", import.meta.url),
+      { type: "module" }
+    );
+    workerRef.current = worker;
+
+    const input: WorkerInput = {
+      config: params.config,
+      tMax: params.tMax,
+      initialArc,
+    };
+    worker.postMessage(input);
+
+    worker.onmessage = (e: MessageEvent<WorkerMessage>) => {
+      const msg = e.data;
+      if (msg.type === "progress") {
+        setWorkerProgress(msg.pct);
+      } else if (msg.type === "done") {
+        const flat = new Float64Array(msg.historyBuffer);
+        setHistoryBuffer(flat);
+        setArcCount(msg.arcCount);
+        setWorkerProgress(null);
+      } else if (msg.type === "error") {
+        console.error("Worker error:", msg.message);
+        setWorkerProgress(null);
+      }
+    };
+
+    return () => {
+      worker.terminate();
+    };
+  }, [params, initialArc]);
 
   const [step,       setStep]       = useState(0);
   const [playing,    setPlaying]    = useState(false);
   const [speed,      setSpeed]      = useState(700);
   const [showDirac,  setShowDirac]  = useState(false);
 
-  const state = history[step];
-  const grid  = system.probabilities(state);
+  // Reset step when new history arrives
+  useEffect(() => {
+    setStep(0);
+    setPlaying(false);
+  }, [historyBuffer]);
+
+  // Derive current state from flat buffer
+  const state: Float64Array = useMemo(() => {
+    if (!historyBuffer || arcCount === 0) return new Float64Array(0);
+    const start = step * arcCount;
+    return historyBuffer.subarray(start, start + arcCount);
+  }, [historyBuffer, arcCount, step]);
+
+  const grid  = useMemo(() => {
+    if (state.length === 0) return Array.from({ length: system.rows }, () => Array(system.cols).fill(0));
+    return system.probabilities(state);
+  }, [system, state]);
 
   /* Auto-play */
   useEffect(() => {
@@ -559,8 +647,16 @@ export default function App() {
   const sliderPct = (step / params.tMax) * 100;
   const normVal   = norm(state);
 
+  // Evolution formula label
+  const formulaLabel = params.config.evolutionOrder === "CS" ? "U = C · S" : "U = S · C";
+
+  const isLoading = workerProgress !== null;
+
   return (
     <div className={`app${activeTab === "visual" ? " has-controls" : ""}`}>
+
+      {/* Loading overlay */}
+      {isLoading && <LoadingOverlay pct={workerProgress ?? 0} />}
 
       {/* ── Header ──────────────────────────────────── */}
       <header className="header">
@@ -673,7 +769,7 @@ export default function App() {
                       |ψ<sub>{step + 1}</sub>⟩ = U|ψ<sub>{step}</sub>⟩
                     </span>
                     <span className="evo-sep">·</span>
-                    <span className="evo-formula">U = S · C</span>
+                    <span className="evo-formula">{formulaLabel}</span>
                   </div>
                 </div>
               </section>
@@ -696,7 +792,7 @@ export default function App() {
                 id="btn-reset"
                 className="ctrl-btn"
                 onClick={() => { setStep(0); setPlaying(false); }}
-                disabled={step === 0}
+                disabled={step === 0 || isLoading}
                 title="Reiniciar — Home"
                 aria-label="Reiniciar"
               >
@@ -707,7 +803,7 @@ export default function App() {
                 id="btn-prev"
                 className="ctrl-btn"
                 onClick={() => { setPlaying(false); setStep((s) => Math.max(0, s - 1)); }}
-                disabled={step === 0}
+                disabled={step === 0 || isLoading}
                 title="Passo anterior — ←"
                 aria-label="Passo anterior"
               >
@@ -718,7 +814,7 @@ export default function App() {
                 id="btn-play"
                 className="ctrl-btn play-btn"
                 onClick={() => setPlaying((p) => !p)}
-                disabled={step >= params.tMax && !playing}
+                disabled={(step >= params.tMax && !playing) || isLoading}
                 title={playing ? "Pausar — Space" : "Reproduzir — Space"}
                 aria-label={playing ? "Pausar" : "Reproduzir"}
               >
@@ -729,7 +825,7 @@ export default function App() {
                 id="btn-next"
                 className="ctrl-btn"
                 onClick={() => { setPlaying(false); setStep((s) => Math.min(params.tMax, s + 1)); }}
-                disabled={step >= params.tMax}
+                disabled={step >= params.tMax || isLoading}
                 title="Próximo passo — →"
                 aria-label="Próximo passo"
               >
@@ -751,6 +847,7 @@ export default function App() {
                 min={0}
                 max={params.tMax}
                 value={step}
+                disabled={isLoading}
                 style={{ "--pct": sliderPct } as React.CSSProperties}
                 onChange={(e) => {
                   setPlaying(false);
@@ -800,5 +897,3 @@ export default function App() {
     </div>
   );
 }
-
-// dirac function was removed as we use diracTerms in the UI
