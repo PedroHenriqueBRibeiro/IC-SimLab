@@ -13,6 +13,7 @@ export interface QuantumWalkConfig {
   boundary?: "open" | "periodic";
   defaultCoin?: "grover" | "hadamard" | "mixed";
   evolutionOrder?: EvolutionOrder;
+  targetVertex?: [number, number] | null;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ export class QuantumSystem {
   degree: Map<string, number>;
   arcs: Arc[];
   arcIndex: Map<string, number>;
+  targetVertex: [number, number] | null;
 
   // Sparse structures (replaces dense C, S, U)
   /** For each arc index i, the list of arc indices that share arc[i]'s source vertex */
@@ -66,6 +68,7 @@ export class QuantumSystem {
     this.boundary = config.boundary || "open";
     this.defaultCoin = config.defaultCoin || "mixed";
     this.evolutionOrder = config.evolutionOrder || "SC";
+    this.targetVertex = config.targetVertex || null;
 
     // ── Build vertex list ──────────────────────────────────────────────────
     this.vertices = Array.from(
@@ -155,6 +158,12 @@ export class QuantumSystem {
     }
   }
 
+  private minusIdentity(d: number): number[] {
+    const out = new Array(d * d).fill(0);
+    for (let i = 0; i < d; i++) out[i * d + i] = -1;
+    return out;
+  }
+
   // ── Sparse structure builders ──────────────────────────────────────────────
 
   /** Build reverseArc[i]: for arc i=(u→v), find arc j=(v→u). O(|arcs|). */
@@ -206,7 +215,12 @@ export class QuantumSystem {
     const coeffs = new Float64Array(totalCoeffs);
     groups.forEach((g, gi) => {
       const d = g.length;
-      const local = this.localCoin(d);
+      
+      const v = this.vertices[gi];
+      const isTarget = this.targetVertex && v[0] === this.targetVertex[0] && v[1] === this.targetVertex[1];
+      
+      const local = isTarget ? this.minusIdentity(d) : this.localCoin(d);
+      
       const off = offsets[gi];
       for (let k = 0; k < local.length; k++) {
         coeffs[off + k] = local[k];
@@ -295,15 +309,22 @@ export class QuantumSystem {
    * Layout: history[t * arcCount + i] = amplitude of arc i at step t.
    * This flat layout is cache-friendly and Transferable to a Web Worker.
    */
-  createHistoryFlat(tMax: number, initialArc: number): Float64Array {
+  createHistoryFlat(tMax: number, initialArc: number, initialStateType: "localized" | "uniform" = "localized"): Float64Array {
     const n = this.arcs.length;
     const history = new Float64Array((tMax + 1) * n);
 
     // Initial state
-    if (initialArc >= 0 && initialArc < n) {
-      history[initialArc] = 1;
+    if (initialStateType === "uniform") {
+      const val = 1 / Math.sqrt(n);
+      for (let i = 0; i < n; i++) {
+        history[i] = val;
+      }
     } else {
-      history[0] = 1; // Fallback
+      if (initialArc >= 0 && initialArc < n) {
+        history[initialArc] = 1;
+      } else {
+        history[0] = 1; // Fallback
+      }
     }
 
     // Evolve

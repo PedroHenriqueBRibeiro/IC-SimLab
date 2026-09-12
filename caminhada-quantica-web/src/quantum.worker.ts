@@ -20,6 +20,7 @@ export interface WorkerInput {
   config: QuantumWalkConfig & { evolutionOrder?: EvolutionOrder };
   tMax: number;
   initialArc: number;
+  initialState?: "localized" | "uniform";
 }
 
 export type WorkerMessage =
@@ -31,19 +32,13 @@ export type WorkerMessage =
 
 self.onmessage = (e: MessageEvent<WorkerInput>) => {
   try {
-    const { config, tMax, initialArc } = e.data;
+    const { config, tMax, initialArc, initialState } = e.data;
 
     const system = new QuantumSystem(config);
     const n = system.arcs.length;
-    const total = tMax + 1;
-    const history = new Float64Array(total * n);
-
-    // Set initial state
-    if (initialArc >= 0 && initialArc < n) {
-      history[initialArc] = 1;
-    } else {
-      history[0] = 1;
-    }
+    
+    // Agora delegamos a criação do histórico inicial para a classe
+    const history = system.createHistoryFlat(tMax, initialArc, initialState || "localized");
 
     // Evolve step by step, reporting progress every 5%
     const reportEvery = Math.max(1, Math.floor(tMax / 20));

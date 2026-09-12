@@ -8,6 +8,7 @@ export type SimulationParams = {
   initialCol: number;
   initialDirRow: number;
   initialDirCol: number;
+  initialState: "localized" | "uniform";
 };
 
 const DEFAULT_PARAMS: SimulationParams = {
@@ -17,6 +18,7 @@ const DEFAULT_PARAMS: SimulationParams = {
   initialCol: 1,
   initialDirRow: 0,
   initialDirCol: 1,
+  initialState: "localized",
 };
 
 function Slider({
@@ -209,6 +211,47 @@ export function LabPanel({
             onChange={(v) => updateConfig({ evolutionOrder: v as EvolutionOrder })}
           />
 
+          <ToggleGroup
+            label="Busca Espacial (Oráculo)"
+            value={draft.config.targetVertex ? "active" : "none"}
+            options={[
+              { value: "none", label: "Inativo" },
+              { value: "active", label: "Ativo (-I no Alvo)" },
+            ]}
+            onChange={(v) => updateConfig({ targetVertex: v === "active" ? [Math.floor(draft.config.rows / 2), Math.floor(draft.config.cols / 2)] : null })}
+          />
+
+          {draft.config.targetVertex && (
+            <div className="lab-field-group" style={{ marginTop: "1rem" }}>
+              <div className="lab-field">
+                <div className="lab-field-header">
+                  <label>Alvo — Linha</label>
+                  <span className="lab-val">{draft.config.targetVertex[0]}</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={draft.config.rows - 1}
+                  value={draft.config.targetVertex[0]}
+                  onChange={(e) => updateConfig({ targetVertex: [Math.max(0, Math.min(Number(e.target.value), draft.config.rows - 1)), draft.config.targetVertex![1]] })}
+                />
+              </div>
+              <div className="lab-field">
+                <div className="lab-field-header">
+                  <label>Alvo — Coluna</label>
+                  <span className="lab-val">{draft.config.targetVertex[1]}</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={draft.config.cols - 1}
+                  value={draft.config.targetVertex[1]}
+                  onChange={(e) => updateConfig({ targetVertex: [draft.config.targetVertex![0], Math.max(0, Math.min(Number(e.target.value), draft.config.cols - 1))] })}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="lab-info-box">
             <div className="lab-info-row">
               <span>Arcos totais</span>
@@ -239,10 +282,22 @@ export function LabPanel({
             <h3>Estado Inicial</h3>
           </div>
 
-          <div className="lab-field-group">
-            <div className="lab-field">
-              <div className="lab-field-header">
-                <label>Vértice — Linha</label>
+          <ToggleGroup
+            label="Tipo de Estado"
+            value={draft.initialState ?? "localized"}
+            options={[
+              { value: "localized", label: "Localizado (1 arco)", title: "A caminhada começa em um único ponto direcional." },
+              { value: "uniform", label: "Uniforme (Toda a malha)", title: "A caminhada começa perfeitamente distribuída em toda a malha (1/√N)." },
+            ]}
+            onChange={(v) => update({ initialState: v as "localized" | "uniform" })}
+          />
+
+          {draft.initialState !== "uniform" && (
+            <>
+              <div className="lab-field-group" style={{ marginTop: "1rem" }}>
+                <div className="lab-field">
+                  <div className="lab-field-header">
+                    <label>Vértice — Linha</label>
                 <span className="lab-val">{draft.initialRow}</span>
               </div>
               <input
@@ -296,12 +351,18 @@ export function LabPanel({
           <p className="lab-hint">
             O estado inicial é o arco de ({draft.initialRow},{draft.initialCol}) apontando para ({draft.initialDirRow},{draft.initialDirCol}). Se a direção não for um vizinho válido, usamos o primeiro vizinho como fallback.
           </p>
+          </>
+          )}
 
           <div className="lab-state-preview">
             <span className="lab-state-label">|ψ₀⟩ =</span>
-            <span className="lab-state-ket">
-              |({draft.initialRow},{draft.initialCol}),({draft.initialDirRow},{draft.initialDirCol})⟩
-            </span>
+            {draft.initialState === "uniform" ? (
+              <span className="lab-state-ket">∑ (1 / √N) |arco_i⟩</span>
+            ) : (
+              <span className="lab-state-ket">
+                |({draft.initialRow},{draft.initialCol}),({draft.initialDirRow},{draft.initialDirCol})⟩
+              </span>
+            )}
           </div>
         </div>
 

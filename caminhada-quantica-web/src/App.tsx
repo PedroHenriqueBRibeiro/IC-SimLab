@@ -63,6 +63,8 @@ function Bar({
   degree,
   ox,
   oz,
+  isTarget = false,
+  showLabels,
 }: {
   row: number;
   col: number;
@@ -71,6 +73,8 @@ function Bar({
   degree: number;
   ox: number;
   oz: number;
+  isTarget?: boolean;
+  showLabels: boolean;
 }) {
   const barRef       = useRef<THREE.Mesh>(null);
   const labelRef     = useRef<THREE.Group>(null);
@@ -125,10 +129,10 @@ function Bar({
       >
         <planeGeometry args={[0.9, 0.9]} />
         <meshStandardMaterial
-          color={hovered ? "#E2E8F0" : "#F1F5F9"}
+          color={isTarget ? (hovered ? "#FECDD3" : "#FFE4E6") : (hovered ? "#E2E8F0" : "#F1F5F9")}
           roughness={0.95}
           transparent
-          opacity={0.9}
+          opacity={isTarget ? 1.0 : 0.9}
         />
       </mesh>
 
@@ -159,7 +163,7 @@ function Bar({
 
       {/* Floating probability label — position.y tracked by useFrame */}
       <group ref={labelRef} position={[0, MIN_H + 0.3, 0]}>
-        {p > 0.003 && !hovered && (
+        {p > 0.003 && !hovered && showLabels && (
           <Html center distanceFactor={7.5} occlude={false}>
             <div className="bar-chip">{p.toFixed(3)}</div>
           </Html>
@@ -190,7 +194,7 @@ function Bar({
 /* ─────────────────────────────────────────────
    Scene — 3D world
    ───────────────────────────────────────────── */
-function Scene({ grid, system }: { grid: number[][], system: QuantumSystem }) {
+function Scene({ grid, system, showLabels }: { grid: number[][], system: QuantumSystem, showLabels: boolean }) {
   const maxP = Math.max(...grid.flat(), 1e-6);
   
   const ox = (system.cols - 1) / 2;
@@ -223,9 +227,23 @@ function Scene({ grid, system }: { grid: number[][], system: QuantumSystem }) {
 
       {/* Bars */}
       {grid.map((row, i) =>
-        row.map((p, j) => (
-          <Bar key={`${i}-${j}`} row={i} col={j} p={p} maxP={maxP} degree={system.degree.get(`${i},${j}`) ?? 2} ox={ox} oz={oz} />
-        ))
+        row.map((p, j) => {
+          const isTarget = system.targetVertex?.[0] === i && system.targetVertex?.[1] === j;
+          return (
+            <Bar 
+              key={`${i}-${j}`} 
+              row={i} 
+              col={j} 
+              p={p} 
+              maxP={maxP} 
+              degree={system.degree.get(`${i},${j}`) ?? 2} 
+              ox={ox} 
+              oz={oz}
+              isTarget={isTarget}
+              showLabels={showLabels}
+            />
+          );
+        })
       )}
 
       {/* Ground plane */}
@@ -276,7 +294,7 @@ function ColorLegend() {
    Small grids (≤6×6): labeled cells
    Large grids: compact heatmap with tooltips only
    ───────────────────────────────────────────── */
-function Matrix({ grid, cols, rows }: { grid: number[][], cols: number, rows: number }) {
+function Matrix({ grid, cols, rows, targetVertex }: { grid: number[][], cols: number, rows: number, targetVertex?: [number, number] | null }) {
   const maxP = Math.max(...grid.flat(), 1e-9);
   const isCompact = cols > 4 || rows > 4;
   const [hoveredCell, setHoveredCell] = useState<[number,number] | null>(null);
@@ -292,14 +310,16 @@ function Matrix({ grid, cols, rows }: { grid: number[][], cols: number, rows: nu
           row.map((value, j) => {
             const intensity = maxP > 0 ? value / maxP : 0;
             const isMax = value > 1e-9 && Math.abs(value - maxP) < 1e-9;
+            const isTarget = targetVertex?.[0] === i && targetVertex?.[1] === j;
             return (
               <div
                 key={`${i}-${j}`}
-                className={`cell${isMax ? " cell-max" : ""}${isCompact ? " cell-heatmap" : ""}`}
+                className={`cell${isMax ? " cell-max" : ""}${isCompact ? " cell-heatmap" : ""}${isTarget ? " cell-target" : ""}`}
                 style={{
                   background: isCompact
                     ? `rgba(79, 70, 229, ${Math.max(intensity * 0.85, intensity > 0.001 ? 0.06 : 0).toFixed(3)})`
                     : `rgba(79, 70, 229, ${(intensity * 0.15).toFixed(3)})`,
+                  boxShadow: isTarget ? "inset 0 0 0 2px #E11D48" : undefined
                 }}
                 title={`(${i},${j}) — P = ${value.toFixed(6)}`}
                 onMouseEnter={() => isCompact && setHoveredCell([i, j])}
@@ -514,6 +534,7 @@ export default function App() {
     initialCol: 1,
     initialDirRow: 0,
     initialDirCol: 1,
+    initialState: "localized",
   });
 
   // ── History state managed via Web Worker ──────────────────────────────────
@@ -548,6 +569,7 @@ export default function App() {
       config: params.config,
       tMax: params.tMax,
       initialArc,
+      initialState: params.initialState,
     };
     worker.postMessage(input);
 
@@ -575,6 +597,7 @@ export default function App() {
   const [playing,    setPlaying]    = useState(false);
   const [speed,      setSpeed]      = useState(700);
   const [showDirac,  setShowDirac]  = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
 
   // Reset step when new history arrives
   useEffect(() => {
@@ -721,7 +744,7 @@ export default function App() {
               </div>
               <div className="canvas-wrap">
                 <Canvas shadows>
-                  <Scene grid={grid} system={system} />
+                  <Scene grid={grid} system={system} showLabels={showLabels} />
                 </Canvas>
               </div>
             </div>
@@ -777,7 +800,7 @@ export default function App() {
               {/* Probability Matrix — takes all remaining space */}
               <section className="panel panel-matrix">
                 <div className="panel-label">Distribuição P(v)</div>
-                <Matrix grid={grid} cols={system.cols} rows={system.rows} />
+                <Matrix grid={grid} cols={system.cols} rows={system.rows} targetVertex={system.targetVertex} />
               </section>
 
             </aside>
@@ -859,6 +882,17 @@ export default function App() {
                 aria-valuenow={step}
               />
             </div>
+
+            <div className="ctrl-divider" aria-hidden="true" />
+
+            <button
+              className="ctrl-btn"
+              onClick={() => setShowLabels((l) => !l)}
+              title={showLabels ? "Ocultar números 3D" : "Mostrar números 3D"}
+              style={{ fontSize: 11, fontWeight: 600, padding: "0 10px", width: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}
+            >
+              {showLabels ? "Esconder P(v)" : "Mostrar P(v)"}
+            </button>
 
             <div className="ctrl-divider" aria-hidden="true" />
 
